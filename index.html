@@ -29,11 +29,11 @@
   const path=version===1?'/':'/v2';
   const response=await fetch(API+path);if(!response.ok)throw Error('Directory HTTP '+response.status);
   const doc=new DOMParser().parseFromString(await response.text(),'text/html');
-  const pattern=version===1?/\\/watch\\/([^/?#]+)/:/\\/v2\\/watch\\/([^/?#]+)/;
+  const pattern=version===1?/\/watch\/([^/?#]+)/:/\/v2\/watch\/([^/?#]+)/;
   const found=[];const seen=new Set();
   for(const a of doc.querySelectorAll('a[href]')){const href=a.getAttribute('href')||'';const m=href.match(pattern);if(!m||seen.has(m[1]))continue;
    const card=a.closest('article,li,[class*="card"],[class*="channel"]')||a.parentElement;
-   const name=(a.textContent||card?.textContent||'').replace(/\\s+/g,' ').trim();if(!name||name.length>120)continue;
+   const name=(a.textContent||card?.textContent||'').replace(/\s+/g,' ').trim();if(!name||name.length>120)continue;
    const img=card?.querySelector('img');found.push(normalize({id:decodeURIComponent(m[1]),name,category:card?.getAttribute('data-category')||'Other',logo:img?.getAttribute('src')||img?.getAttribute('data-src')||''},version));seen.add(m[1]);
   }return found;
  }

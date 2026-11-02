@@ -1,15 +1,22 @@
 # LiveTGTV Shaka Player
 
-A lightweight responsive web player for Android and Windows browsers, using **Shaka Player** for MPEG-DASH and HLS playback where supported.
+A responsive LiveTGTV channel player for Android and Windows browsers, powered by Shaka Player.
 
-## Run
-Open `index.html` through a local static server or deploy the repository with GitHub Pages. The Shaka library is loaded from a CDN, so an internet connection is required.
+## Use
+- Open the deployed GitHub Pages site in a modern browser, or install the Android APK from the GitHub Actions **Android APK** artifact.
+- Search the catalogue, choose a channel, select a source and press Play.
+- The web version is also usable on Windows; install it as a browser app where supported.
 
-## Data flow
-- Loads the documented public V1 and V2 catalogues, then falls back to scraping their public directory pages if an API catalogue is unavailable.
-- Resolves each selected channel through its matching public channel endpoint.
-- Uses the returned stream URL with Shaka Player; V1 ClearKey configuration is applied only when explicitly returned by the public resolver.
-- Provides channel search, source selection, refresh and stop controls.
+## Stream handling
+- Loads LiveTGTV public V1 and V2 channel catalogues.
+- Resolves V1 source arrays (including DASH/MPD) and V2 server arrays (including HLS/M3U8).
+- Applies resolver-provided request headers and explicitly supplied ClearKey configuration only.
+- If the catalogue API is unavailable, tries the public directory pages as a fallback.
 
-## Important
-This is a browser-based app, not a native APK or Windows executable. It does not extract keys from embeds or bypass DRM/access controls. A successful resolver response does not guarantee that a channel is currently online or playable on every network/device.
+## Build
+The `.github/workflows` directory contains:
+- GitHub Pages deployment for the web player.
+- Android debug APK build; the APK is published as a workflow artifact.
+
+## Limitations
+Playback still depends on the provider's current stream availability, CORS, network, browser/codec support and any provider-authorized DRM configuration. This app does not extract keys from embeds or bypass DRM/access controls. A successful build does not prove every channel is playable.

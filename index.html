@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <title>LiveTGTV V1 Player</title>
+  <link rel="stylesheet" href="./style.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.12/shaka-player.compiled.js"></script>
+  <script defer src="./player.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand-mark">▶</div>
+      <div><p class="eyebrow">VEGA COMPANION PLAYER</p><h1>LiveTGTV <span>V1</span></h1></div>
+    </header>
+    <section class="player-card">
+      <div class="video-wrap">
+        <video id="video" controls playsinline></video>
+        <div id="placeholder" class="placeholder">Select a V1 channel to begin</div>
+      </div>
+      <div class="details">
+        <div><h2 id="channel-name">No channel selected</h2><p id="channel-category">V1 • Live television</p></div>
+        <span id="status" class="status">Ready</span>
+      </div>
+      <form id="channel-form">
+        <label for="channel-id">LiveTGTV V1 channel ID</label>
+        <div class="input-row">
+          <input id="channel-id" inputmode="numeric" autocomplete="off" placeholder="e.g. 143" required>
+          <button type="submit" id="play-button">Load channel</button>
+        </div>
+      </form>
+      <p id="message" class="message" role="status">Enter a channel ID. The player retrieves a fresh V1 stream response when you load it.</p>
+    </section>
+    <footer>Uses the channel owner's public V1 API. Stream URLs and playback keys are fetched at runtime and are not stored in this page.</footer>
+  </main>
+</body>
+</html>

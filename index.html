@@ -25,13 +25,26 @@
  const getJson=async url=>{const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('HTTP '+r.status);return r.json()};
  const arr=x=>Array.isArray(x)?x:(x?.channels||x?.data||x?.items||[]);
  function normalize(c,version){return {id:String(c.id??c.channel_id??''),name:c.name||c.title||('Channel '+c.id),category:c.category||c.group||'Live TV',logo:c.logo||c.image||'',version,raw:c};}
+ async function scrape(version){
+  const path=version===1?'/':'/v2';
+  const response=await fetch(API+path);if(!response.ok)throw Error('Directory HTTP '+response.status);
+  const doc=new DOMParser().parseFromString(await response.text(),'text/html');
+  const pattern=version===1?/\\/watch\\/([^/?#]+)/:/\\/v2\\/watch\\/([^/?#]+)/;
+  const found=[];const seen=new Set();
+  for(const a of doc.querySelectorAll('a[href]')){const href=a.getAttribute('href')||'';const m=href.match(pattern);if(!m||seen.has(m[1]))continue;
+   const card=a.closest('article,li,[class*="card"],[class*="channel"]')||a.parentElement;
+   const name=(a.textContent||card?.textContent||'').replace(/\\s+/g,' ').trim();if(!name||name.length>120)continue;
+   const img=card?.querySelector('img');found.push(normalize({id:decodeURIComponent(m[1]),name,category:card?.getAttribute('data-category')||'Other',logo:img?.getAttribute('src')||img?.getAttribute('data-src')||''},version));seen.add(m[1]);
+  }return found;
+ }
  async function load(){
-  say('Loading V1 and V2 catalogues…');let all=[];
-  try{const d=await getJson(API+'/api/public/channels');all.push(...arr(d).map(c=>normalize(c,1)))}catch(e){console.warn('V1 catalogue API:',e)}
-  try{const d=await getJson(API+'/api/public/v2/channels');all.push(...arr(d).map(c=>normalize(c,2)))}catch(e){console.warn('V2 catalogue API:',e)}
+  say('Loading V1 and V2 catalogues…');let all=[],apiFailed=false;
+  try{const d=await getJson(API+'/api/public/channels');all.push(...arr(d).map(c=>normalize(c,1)))}catch(e){apiFailed=true;console.warn('V1 catalogue API:',e)}
+  try{const d=await getJson(API+'/api/public/v2/channels');all.push(...arr(d).map(c=>normalize(c,2)))}catch(e){apiFailed=true;console.warn('V2 catalogue API:',e)}
+  if(apiFailed||!all.length){say('API incomplete; trying public directory pages…');const scraped=await Promise.allSettled([scrape(1),scrape(2)]);all.push(...scraped.flatMap(r=>r.status==='fulfilled'?r.value:[]))}
   const seen=new Set();channels=all.filter(c=>c.id&&!seen.has(c.version+':'+c.id)&&seen.add(c.version+':'+c.id));
-  if(!channels.length){say('The public catalogue API is unavailable in this browser. Check connection/CORS and retry.',true);list.innerHTML='<div class="empty">Could not load channels.</div>';return}
-  render();say('Loaded '+channels.length+' channels. Select one to resolve its stream.');
+  if(!channels.length){say('Could not load catalogues. Check connection/CORS and retry.',true);list.innerHTML='<div class="empty">Could not load channels.</div>';return}
+  render();say('Loaded '+channels.length+' channels from API/directory. Select one to resolve its stream.');
  }
  function render(){
   const q=search.value.trim().toLowerCase();const filtered=channels.filter(c=>(c.name+' '+c.category).toLowerCase().includes(q));

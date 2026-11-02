@@ -22,7 +22,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Validate player JavaScript\n        run: node scripts/check-inline-js.mjs\n      - name: Build debug APK
+      - name: Validate player JavaScript
+        run: node scripts/check-inline-js.mjs
+      - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
         working-directory: android
       - name: Upload APK

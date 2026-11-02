@@ -61,14 +61,22 @@
   try{
    const d=await getJson(API+(c.version===1?'/api/public/channels/':'/api/public/v2/channels/')+encodeURIComponent(c.id));
    if(c.version===1){
-    const sources=d.sources||d.data?.sources||[];const manifest=sources.find(s=>typeof s==='string')||sources.find(s=>s.url||s.src||s.manifest);
-    const url=typeof manifest==='string'?manifest:(manifest?.url||manifest?.src||manifest?.manifest);
-    if(!url)throw Error('No DASH source was returned by the V1 resolver.');
-    sourceList=[{label:'DASH',url,drm:d.drm||d.data?.drm}];
+    const payload=d.data||d;
+    const sources=Array.isArray(payload.sources)?payload.sources:(Array.isArray(payload.streams)?payload.streams:[]);
+    sourceList=sources.map((item,i)=>{
+     const url=typeof item==='string'?item:(item?.url||item?.src||item?.manifest||item?.playable);
+     if(!url)return null;
+     return {label:item?.label||item?.name||('Source '+(i+1)),url,type:item?.type||(/\\.m3u8(?:[?#]|$)/i.test(url)?'hls':'dash'),headers:item?.headers||payload.headers||{},drm:item?.drm||payload.drm||null};
+    }).filter(Boolean);
+    if(!sourceList.length)throw Error('V1 resolver returned no stream URL.');
    }else{
-    const servers=d.servers||d.data?.servers||[];
-    sourceList=servers.filter(s=>s.playable||s.url).map((s,i)=>({label:s.label||s.name||('Server '+(i+1)),url:s.playable||s.url,drm:null}));
-    if(!sourceList.length)throw Error('No playable source was returned by the V2 resolver.');
+    const payload=d.data||d;
+    const servers=payload.servers||payload.sources||[];
+    sourceList=servers.map((s,i)=>{
+     const url=typeof s==='string'?s:(s.playable||s.url||s.src);
+     return url?{label:s.label||s.name||('Server '+(i+1)),url,type:s.type||(/\\.m3u8(?:[?#]|$)/i.test(url)?'hls':'dash'),headers:s.headers||payload.headers||{},drm:s.drm||payload.drm||null}:null;
+    }).filter(Boolean);
+    if(!sourceList.length)throw Error('V2 resolver returned no playable source.');
    }
    serverSel.innerHTML='';sourceList.forEach((s,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=s.label;serverSel.append(o)});
    say('Resolved '+sourceList.length+' playable source'+(sourceList.length===1?'':'s')+'. Press Play.');

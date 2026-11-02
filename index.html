@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090b12"><title>LiveTGTV • Shaka Player</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;background:#090b12;color:#f5f7fb}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#202b45 0,transparent 55%),#090b12;min-height:100vh}.wrap{max-width:1180px;margin:auto;padding:22px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.brand{font-size:22px;font-weight:800;letter-spacing:-.5px}.brand span{color:#8daeff}.sub{color:#98a4ba;font-size:13px;margin-top:4px}.tools{display:flex;gap:8px;flex-wrap:wrap}input,select,button{font:inherit;border:1px solid #303b50;background:#111827;color:#f5f7fb;border-radius:12px;padding:11px 13px}input{min-width:220px}button{cursor:pointer}button.primary{background:#4268d8;border-color:#4268d8}.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(280px,.8fr);gap:18px;margin-top:22px}.panel{background:#101622;border:1px solid #253047;border-radius:18px;overflow:hidden}.videoBox{background:#000;aspect-ratio:16/9;position:relative}.videoBox video{width:100%;height:100%;object-fit:contain}.playerInfo{padding:14px 16px}.title{font-weight:750;font-size:18px}.status{color:#9eacc2;font-size:13px;margin-top:6px;min-height:18px}.error{color:#ff9c9c}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.row select{flex:1;min-width:140px}.listHead{padding:15px 16px;border-bottom:1px solid #253047;display:flex;justify-content:space-between;align-items:center}.channels{max-height:620px;overflow:auto}.channel{display:flex;align-items:center;gap:11px;padding:11px 13px;border-bottom:1px solid #202a3b;cursor:pointer}.channel:hover,.channel.active{background:#1a2740}.logo{width:46px;height:46px;border-radius:10px;object-fit:contain;background:#202a3b}.cname{font-size:14px;font-weight:650}.cat{font-size:12px;color:#93a1b8;margin-top:3px}.empty{padding:24px;color:#98a4ba;text-align:center}.foot{color:#738198;font-size:12px;margin:18px 2px}.pill{font-size:11px;color:#b8c9ff;background:#1b2c50;border-radius:20px;padding:4px 8px}@media(max-width:820px){.layout{grid-template-columns:1fr}.channels{max-height:360px}.wrap{padding:14px}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.12/shaka-player.compiled.js"></script>
+</head>
+<body><main class="wrap">
+<header class="top"><div><div class="brand">LiveTGTV <span>Player</span></div><div class="sub">Lightweight channel browser · powered by Shaka Player</div></div><div class="tools"><input id="search" placeholder="Search channels…"><button id="reload" class="primary">Refresh</button></div></header>
+<section class="layout">
+<div class="panel"><div class="videoBox"><video id="video" controls autoplay playsinline></video></div><div class="playerInfo"><div class="title" id="playing">Choose a channel</div><div class="status" id="status">Loading channel catalogue…</div><div class="row"><select id="server" aria-label="Playback source"><option value="">Default source</option></select><button id="play" class="primary">Play</button><button id="stop">Stop</button></div></div></div>
+<aside class="panel"><div class="listHead"><strong>Channels</strong><span class="pill" id="count">0</span></div><div class="channels" id="channels"><div class="empty">Loading…</div></div></aside>
+</section><div class="foot">Uses LiveTGTV public catalogue/resolver endpoints. Playback depends on source availability, region, browser support and network conditions. No DRM or access-control bypass.</div>
+</main>
+<script>
+(()=> {
+ const API='https://livetgtv.lovable.app';
+ const $=id=>document.getElementById(id);
+ const video=$('video'), list=$('channels'), status=$('status'), title=$('playing'), search=$('search'), serverSel=$('server');
+ let channels=[], current=null, player=null, sourceList=[];
+ const say=(msg,bad=false)=>{status.textContent=msg;status.className='status'+(bad?' error':'')};
+ const getJson=async url=>{const r=await fetch(url,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('HTTP '+r.status);return r.json()};
+ const arr=x=>Array.isArray(x)?x:(x?.channels||x?.data||x?.items||[]);
+ function normalize(c,version){return {id:String(c.id??c.channel_id??''),name:c.name||c.title||('Channel '+c.id),category:c.category||c.group||'Live TV',logo:c.logo||c.image||'',version,raw:c};}
+ async function load(){
+  say('Loading V1 and V2 catalogues…');let all=[];
+  try{const d=await getJson(API+'/api/public/channels');all.push(...arr(d).map(c=>normalize(c,1)))}catch(e){console.warn('V1 catalogue API:',e)}
+  try{const d=await getJson(API+'/api/public/v2/channels');all.push(...arr(d).map(c=>normalize(c,2)))}catch(e){console.warn('V2 catalogue API:',e)}
+  const seen=new Set();channels=all.filter(c=>c.id&&!seen.has(c.version+':'+c.id)&&seen.add(c.version+':'+c.id));
+  if(!channels.length){say('The public catalogue API is unavailable in this browser. Check connection/CORS and retry.',true);list.innerHTML='<div class="empty">Could not load channels.</div>';return}
+  render();say('Loaded '+channels.length+' channels. Select one to resolve its stream.');
+ }
+ function render(){
+  const q=search.value.trim().toLowerCase();const filtered=channels.filter(c=>(c.name+' '+c.category).toLowerCase().includes(q));
+  $('count').textContent=filtered.length;list.innerHTML='';
+  if(!filtered.length){list.innerHTML='<div class="empty">No matching channels.</div>';return}
+  const frag=document.createDocumentFragment();
+  filtered.forEach(c=>{const el=document.createElement('div');el.className='channel'+(current&&current.id===c.id&&current.version===c.version?' active':'');
+   const img=document.createElement('img');img.className='logo';img.alt='';img.src=c.logo;img.onerror=()=>{img.style.visibility='hidden'};
+   const info=document.createElement('div');const n=document.createElement('div');n.className='cname';n.textContent=c.name;const cat=document.createElement('div');cat.className='cat';cat.textContent=c.category+' · V'+c.version;info.append(n,cat);el.append(img,info);el.onclick=()=>select(c);frag.append(el)});
+  list.append(frag);
+ }
+ async function reset(){if(player){await player.destroy();player=null}video.pause();video.removeAttribute('src');video.load();sourceList=[];serverSel.innerHTML='<option value="">Default source</option>'}
+ async function select(c){current=c;render();title.textContent=c.name;say('Resolving channel…');await reset();
+  try{
+   const d=await getJson(API+(c.version===1?'/api/public/channels/':'/api/public/v2/channels/')+encodeURIComponent(c.id));
+   if(c.version===1){
+    const sources=d.sources||d.data?.sources||[];const manifest=sources.find(s=>typeof s==='string')||sources.find(s=>s.url||s.src||s.manifest);
+    const url=typeof manifest==='string'?manifest:(manifest?.url||manifest?.src||manifest?.manifest);
+    if(!url)throw Error('No DASH source was returned by the V1 resolver.');
+    sourceList=[{label:'DASH',url,drm:d.drm||d.data?.drm}];
+   }else{
+    const servers=d.servers||d.data?.servers||[];
+    sourceList=servers.filter(s=>s.playable||s.url).map((s,i)=>({label:s.label||s.name||('Server '+(i+1)),url:s.playable||s.url,drm:null}));
+    if(!sourceList.length)throw Error('No playable source was returned by the V2 resolver.');
+   }
+   serverSel.innerHTML='';sourceList.forEach((s,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=s.label;serverSel.append(o)});
+   say('Source resolved. Press Play.');
+  }catch(e){say(e.message||'Could not resolve channel.',true)}
+ }
+ async function play(){
+  if(!current||!sourceList.length){say('Select a channel first.',true);return}
+  await resetPlayerOnly();
+  const s=sourceList[Number(serverSel.value)||0];
+  try{
+   if(!window.shaka){throw Error('Shaka Player library did not load. Check internet access.')}
+   shaka.polyfill.installAll();if(!shaka.Player.isBrowserSupported())throw Error('This browser does not support Shaka playback.');
+   player=new shaka.Player();await player.attach(video);
+   player.addEventListener('error',ev=>{const e=ev.detail||{};say('Playback error '+(e.code||'')+'. The stream may be offline or unsupported.',true)});
+   if(s.drm?.type==='clearkey'&&s.drm.clearKeys)player.configure({drm:{clearKeys:s.drm.clearKeys}});
+   say('Connecting to '+s.label+'…');await player.load(s.url);await video.play().catch(()=>{});say('Stream loaded. If playback does not start, press Play on the video.');
+  }catch(e){say(e.message||'Playback failed.',true)}
+ }
+ async function resetPlayerOnly(){if(player){await player.destroy();player=null}video.pause();video.removeAttribute('src');video.load()}
+ $('play').onclick=play;$('stop').onclick=async()=>{await reset();say('Playback stopped.')};$('reload').onclick=load;search.oninput=render;serverSel.onchange=()=>{if(current) say('Source selected. Press Play to switch.')};
+ if(window.shaka){shaka.polyfill.installAll();shaka.Player.isBrowserSupported()||say('Browser playback support is limited.',true)}
+ load();
+})();
+</script></body></html>

@@ -1,2 +1,2 @@
-# Shaka-player-
+# Shaka-player
 Decrpt the video 

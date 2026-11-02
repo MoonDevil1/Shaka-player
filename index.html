@@ -66,7 +66,7 @@
     sourceList=sources.map((item,i)=>{
      const url=typeof item==='string'?item:(item?.url||item?.src||item?.manifest||item?.playable);
      if(!url)return null;
-     return {label:item?.label||item?.name||('Source '+(i+1)),url,type:item?.type||(/\\.m3u8(?:[?#]|$)/i.test(url)?'hls':'dash'),headers:item?.headers||payload.headers||{},drm:item?.drm||payload.drm||null};
+     return {label:item?.label||item?.name||('Source '+(i+1)),url,type:item?.type||(/\.m3u8(?:[?#]|$)/i.test(url)?'hls':'dash'),headers:item?.headers||payload.headers||{},drm:item?.drm||payload.drm||null};
     }).filter(Boolean);
     if(!sourceList.length)throw Error('V1 resolver returned no stream URL.');
    }else{
@@ -74,7 +74,7 @@
     const servers=payload.servers||payload.sources||[];
     sourceList=servers.map((s,i)=>{
      const url=typeof s==='string'?s:(s.playable||s.url||s.src);
-     return url?{label:s.label||s.name||('Server '+(i+1)),url,type:s.type||(/\\.m3u8(?:[?#]|$)/i.test(url)?'hls':'dash'),headers:s.headers||payload.headers||{},drm:s.drm||payload.drm||null}:null;
+     return url?{label:s.label||s.name||('Server '+(i+1)),url,type:s.type||(/\.m3u8(?:[?#]|$)/i.test(url)?'hls':'dash'),headers:s.headers||payload.headers||{},drm:s.drm||payload.drm||null}:null;
     }).filter(Boolean);
     if(!sourceList.length)throw Error('V2 resolver returned no playable source.');
    }
@@ -91,7 +91,8 @@
    shaka.polyfill.installAll();if(!shaka.Player.isBrowserSupported())throw Error('This browser does not support Shaka playback.');
    player=new shaka.Player();await player.attach(video);
    player.addEventListener('error',ev=>{const e=ev.detail||{};say('Playback error '+(e.code||'')+'. The stream may be offline or unsupported.',true)});
-   if(s.drm?.type==='clearkey'&&s.drm.clearKeys&&typeof s.drm.clearKeys==='object')player.configure({drm:{clearKeys:s.drm.clearKeys}});\n   if(s.headers&&Object.keys(s.headers).length)player.getNetworkingEngine().registerRequestFilter((type,request)=>{Object.entries(s.headers).forEach(([k,v])=>request.headers[k]=String(v))});
+   if(s.drm?.type==='clearkey'&&s.drm.clearKeys&&typeof s.drm.clearKeys==='object')player.configure({drm:{clearKeys:s.drm.clearKeys}});
+   if(s.headers&&Object.keys(s.headers).length)player.getNetworkingEngine().registerRequestFilter((type,request)=>{Object.entries(s.headers).forEach(([k,v])=>request.headers[k]=String(v))});
    say('Connecting to '+s.label+'…');await player.load(s.url);await video.play().catch(()=>{});say('Stream loaded. If playback does not start, press Play on the video.');
   }catch(e){say(e.message||'Playback failed.',true)}
  }

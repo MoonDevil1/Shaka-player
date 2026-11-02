@@ -1,0 +1,9 @@
+{
+  "name": "livetgtv-shaka-player",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lightweight LiveTGTV browser player powered by Shaka Player",
+  "scripts": {
+    "serve": "npx serve ."
+  }
+}
